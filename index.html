@@ -6,10 +6,12 @@
 <meta name="theme-color" content="#151515" id="metaTheme">
 <title>产品视觉与图像作品集 | Product Visual & Image Portfolio</title>
 
-<!-- 字体：正文 / 中文 / 等宽遥测 -->
+<!-- 字体：正文 / 中文 / 等宽遥测
+     · 只请求实际用到的字重（移动端少下载三分之二的字形分片）
+     · media="print" + onload 切换：字体样式不再阻塞首屏渲染 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500;700;900&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;600&display=swap" media="print" onload="this.media='all'">
 
 <style>
 /* ═══════════════════════════════════════════════════
@@ -669,8 +671,11 @@ section { position:relative; z-index:1; padding:140px 48px; max-width:1440px; ma
   animation:boxRise .5s var(--ease-out); position:relative;
 }
 @keyframes boxRise { from{transform:translateY(40px) scale(.96);opacity:0} to{transform:translateY(0) scale(1);opacity:1} }
+/* 关闭键挂在 shell 层（相对视口定位）：查看器内容再长也不会随滚动消失 */
 .viewer-close {
-  position:absolute; top:20px; right:20px; z-index:10;
+  position:absolute; z-index:20;
+  top:calc(5vh + 16px);
+  right:max(52px, calc((100vw - 960px) / 2 + 20px));
   width:44px; height:44px; border-radius:50%;
   background:var(--bg-elevated); border:1px solid var(--border);
   color:var(--t-secondary); font-size:18px; cursor:none;
@@ -702,6 +707,10 @@ section { position:relative; z-index:1; padding:140px 48px; max-width:1440px; ma
   background:var(--grad-skill);
   box-shadow:0 0 20px color-mix(in srgb, var(--c-primary) 55%, transparent);
 }
+/* 触摸命中区：3px 的线在手机上几乎点不中，向两侧各扩 22px */
+.cmp-divider::after {
+  content:''; position:absolute; top:0; bottom:0; left:-22px; right:-22px;
+}
 .cmp-handle {
   position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
   width:52px; height:52px; border-radius:50%;
@@ -727,6 +736,8 @@ section { position:relative; z-index:1; padding:140px 48px; max-width:1440px; ma
 .viewer-body .v-cat { font-size:11px; color:var(--c-primary); letter-spacing:2px; text-transform:uppercase; margin-bottom:16px; font-weight:600; }
 .viewer-body .v-desc { font-size:14px; color:var(--t-secondary); line-height:1.8; margin-bottom:24px; }
 .viewer-meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; }
+/* 详情折叠按钮只在触屏/窄屏出现（桌面信息区本来就是完整展示） */
+.v-detail-toggle { display:none; }
 .vm-cell { padding:16px 20px; background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--r-sm); }
 .vm-label { font-size:10px; color:var(--t-ghost); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
 .vm-value { font-size:13.5px; color:var(--t-primary); font-weight:500; }
@@ -839,6 +850,15 @@ section { position:relative; z-index:1; padding:140px 48px; max-width:1440px; ma
   backdrop-filter:none; -webkit-backdrop-filter:none;
 }
 .contact-glass::before { display:none; }
+
+/* 联系方式行：图标 + 标签 / 值（基础规则此前缺失，导致图标与文字块上下堆叠） */
+.contact-row { display:flex; align-items:center; gap:12px; padding:14px 0; }
+.contact-ic { font-size:18px; line-height:1; flex-shrink:0; }
+.contact-k {
+  font-family:'Fira Code',monospace; font-size:10px; letter-spacing:1.6px;
+  text-transform:uppercase; color:var(--t-ghost); margin-bottom:4px;
+}
+.contact-v { font-size:14.5px; color:var(--t-primary); font-weight:500; }
 
 .contact-info-grid {
   display:grid; grid-template-columns:repeat(4,1fr); gap:32px 40px;
@@ -1246,6 +1266,260 @@ section { position:relative; z-index:1; padding:140px 48px; max-width:1440px; ma
   .cover-stack img { width:32px; height:42px; }
 }
 
+/* ═══════════════════════════════════════════════════════════
+   ✦ MOBILE / TOUCH LAYER —— 移动端体验与性能优化层
+   ── 只在「窄屏」或「触屏」环境生效，桌面视觉保持不变
+   ── ① 布局与触摸目标  ② 沉浸式查看器  ③ 特效降级
+═══════════════════════════════════════════════════════════ */
+@media (max-width:820px), (hover:none) and (pointer:coarse) {
+
+  /* ─── ① 基础：视口高度、滚动与横向溢出 ─── */
+  html { scroll-padding-top:62px; -webkit-text-size-adjust:100%; }
+  html, body { overflow-x:hidden; }
+  body { cursor:auto; }
+  ::-webkit-scrollbar { width:0; height:0; }
+
+  section { padding:64px 18px; }
+  .sec-header { margin-bottom:36px; }
+  .sec-index { font-size:56px; top:-8px; }
+  .sec-label { font-size:10px; letter-spacing:2.4px; margin-bottom:12px; }
+  .sec-title { font-size:clamp(28px,8vw,40px); letter-spacing:-1px; }
+  .sec-sub { font-size:13.5px; line-height:1.7; margin-top:12px; }
+
+  /* ─── ② HERO：修掉窄屏下的横向裁切 ─── */
+  .hero-stage {
+    min-height:100svh; padding:96px 20px 64px;
+    align-items:center;
+  }
+  .hero-scene { width:100%; max-width:100%; min-width:0; animation:none; }
+  .hero-tag {
+    max-width:100%; white-space:normal; text-align:center;
+    font-size:10px; letter-spacing:1.3px; line-height:1.6;
+    padding:7px 15px; margin-bottom:22px;
+  }
+  .hero-title { font-size:clamp(32px,9.8vw,54px); letter-spacing:-1.4px; line-height:1; margin-bottom:20px; }
+  .hero-title .line2 { animation:none; }
+  .hero-desc { font-size:14px; line-height:1.72; margin-bottom:26px; }
+  .hero-type { font-size:12px; margin-bottom:30px; min-height:18px; }
+  .hero-actions { gap:10px; }
+  .btn-3d { padding:14px 24px; font-size:14px; }
+  .hero-float { display:none; }
+  .scroll-cue { display:none; }
+  .marquee-band { padding:26px 0; }
+  .marquee-flow { animation:flowLeft 56s linear infinite; }
+  .marquee-word { font-size:clamp(22px,6.6vw,32px); gap:26px; -webkit-text-stroke-width:.8px; }
+
+  /* ─── ③ 导航 / 遥测：缩小、实色底，触屏不显示光标装饰 ─── */
+  .nav-shell { top:10px; padding:5px 8px; gap:4px; background:var(--bg-deep); transition:background .4s, box-shadow .4s, transform .32s var(--ease-out), opacity .32s; }
+  .nav-shell.scrolled { top:8px; }
+  /* 向下滚动时把导航收起来：固定导航会压住卡片内容 */
+  .nav-shell.nav-hidden { transform:translate(-50%,-170%); opacity:0; pointer-events:none; }
+  .nav-brand { font-size:12.5px; padding:5px 10px 5px 5px; margin-right:0; border-right:none; }
+  .theme-toggle { width:32px; height:32px; font-size:14px; }
+  .side-rail, .hud-bar, .ambient-spot { display:none; }
+  .cursor-core, .cursor-halo, .cursor-label { display:none !important; }
+
+  /* ─── ④ ABOUT / PROJECTS / TIMELINE / CONTACT ─── */
+  .bento-stage { gap:12px; }
+  .bento-block { padding:22px 20px; border-radius:20px; }
+  .bento-block:hover { transform:none; }
+  .bento-emoji { font-size:26px; margin-bottom:14px; }
+  .stat-3d { font-size:clamp(32px,9vw,42px); }
+  .skill-3d { margin-top:12px; }
+  .proj-no { margin-bottom:10px; }
+  .tl-stage { padding-left:20px; }
+  .tl-line { left:0; }
+  .tl-node { left:-25px; top:26px !important; width:12px; height:12px; border-width:2px; }
+  .tl-card { padding:20px 18px; margin-bottom:16px; border-radius:20px; }
+  .tl-card:hover { transform:none; }
+  .tl-role { font-size:18px; margin-bottom:10px; }
+  .tl-text { font-size:13.5px; line-height:1.72; }
+  .tl-tags { margin-top:14px; gap:6px; }
+  .tl-tag { font-size:11px; padding:5px 12px; }
+  .profile-card { padding:22px 20px; gap:16px; flex-direction:column; align-items:flex-start; }
+  .profile-avatar { width:72px; height:72px; }
+  .profile-name { font-size:22px; }
+  .profile-role, .profile-bio { font-size:13px; }
+  .contact-info-grid { gap:18px; }
+  .contact-info-grid .contact-v { font-size:13.5px; }
+  .contact-row { gap:10px; padding:10px 0; }
+  .contact-ic { font-size:16px; }
+  .copy-btn { width:36px; height:36px; font-size:14px; }
+  .footer-zone { padding:38px 18px; }
+  /* 工具卡：触屏改成静态三列网格（不跑轮播动画，8 个工具一眼看全） */
+  .tools-3d-stage { height:250px; }
+  .tools-3d-stage.tools-static { height:auto; padding:0; display:block; }
+  .tools-ring.tools-grid {
+    position:static; width:100%; aspect-ratio:auto;
+    display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px;
+  }
+  .tools-ring.tools-grid .tool-3d-card {
+    position:static; top:auto; left:auto; width:auto; aspect-ratio:auto;
+    padding:16px 8px; gap:6px; border-radius:14px;
+    transform:none !important; opacity:1 !important; will-change:auto;
+  }
+  .tools-ring.tools-grid .t3-icon { font-size:26px; }
+  .tools-ring.tools-grid .t3-name { font-size:12.5px; }
+  .tools-ring.tools-grid .t3-cat { font-size:10px; }
+  .tools-tags { margin-top:20px; padding-top:20px; }
+  .tools-group { width:100%; margin:6px 0 2px !important; }
+  .top-orb { width:40px; height:40px; font-size:15px; bottom:14px; right:12px; opacity:.92; }
+  .top-orb:hover { transform:none; }
+
+  /* ─── ⑤ 作品画廊：手势滑动 + 卡片吸附（不再自动巡航 / 镜像复制） ─── */
+  .board-summary { font-size:11px; margin-bottom:22px; }
+  .board-stack { gap:22px; }
+  .board-head { gap:10px; margin-bottom:2px; }
+  .board-nav { display:none; }
+  .board-icon { width:36px; height:36px; font-size:16px; border-radius:11px; }
+  .board-name { font-size:15px; }
+  .board-en { font-size:9px; }
+  .board-count { font-size:10px; padding:2px 9px; }
+  .board-viewport {
+    padding:14px 4px 20px;
+    scroll-snap-type:x mandatory; scroll-padding-inline:0;
+    -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+    mask-image:none; -webkit-mask-image:none; scrollbar-width:none;
+  }
+  .board-track { gap:12px; }
+  .work-3d { scroll-snap-align:start; will-change:auto; border-radius:20px; }
+  .work-3d:hover { transform:none; box-shadow:none; }
+  .work-3d:active { transform:scale(.985); transition:transform .18s var(--ease-out); }
+  .w-xl,.w-lg,.w-md,.w-sm,.w-tall,.w-sq,.w-sq-lg { width:min(76vw,300px); }
+  .work-3d.pop-in { animation-duration:.42s; animation-delay:0s !important; }
+  .work-meta { padding:14px 16px 16px; }
+  .work-cat { font-size:9.5px; margin-bottom:6px; }
+  .work-name { font-size:15.5px; margin-bottom:6px; }
+  .work-brief {
+    font-size:12.5px; line-height:1.55;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .media-badge { top:10px; left:10px; }
+  .badge { font-size:9px; padding:4px 10px; letter-spacing:.8px; }
+  .view-hint { display:none; }
+  .view-count { left:10px; bottom:10px; font-size:9px; padding:3px 9px; }
+
+  /* ─── ⑥ 查看器：沉浸式全屏 + 折叠详情 + 点击放大 ─── */
+  .viewer-shell { padding:0; align-items:stretch; justify-content:stretch; background:var(--bg-void); }
+  .viewer-box {
+    width:100%; max-width:none; height:100vh; height:100dvh; max-height:none;
+    border:none; border-radius:0; box-shadow:none; animation:none;
+    overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
+  }
+  .viewer-close {
+    position:fixed; top:calc(env(safe-area-inset-top, 0px) + 10px); right:10px;
+    width:40px; height:40px; font-size:16px;
+    background:color-mix(in srgb, var(--bg-void) 88%, transparent);
+  }
+  .viewer-close:hover { transform:none; }
+
+  .stack-stage { height:min(64dvh,540px); border-radius:0; touch-action:pan-y; }
+  .stack-stage > img { padding:46px 6px 30px; }
+  .stack-tabs { top:8px; left:8px; transform:none; max-width:calc(100% - 62px); }
+  .stack-tab { padding:6px 11px; font-size:11.5px; }
+  .stack-tab i { font-size:9px; margin-left:4px; }
+  .stack-caption {
+    left:10px; bottom:10px; font-size:10.5px; max-width:calc(100% - 92px);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .stack-readout { right:10px; bottom:10px; font-size:9.5px; }
+  .thumb-strip { padding:10px 14px; gap:8px; }
+  .thumb { width:64px; height:46px; }
+
+  .compare-wrap { aspect-ratio:auto; height:min(64dvh,540px); border-radius:0; touch-action:pan-y; }
+  .cmp-modes { top:8px; left:8px; transform:none; }
+  .cmp-mode { padding:6px 11px; font-size:11px; }
+  .cmp-label { font-size:9px; padding:3px 9px; bottom:10px; opacity:.88; }
+  .cmp-label.before { left:10px; }
+  .cmp-label.after { right:10px; }
+  .cmp-alt { bottom:46px; }
+  .cmp-handle { width:46px; height:46px; font-size:16px; }
+
+  .mx-stage { height:min(50dvh,440px); border-radius:0; }
+  .mx-stage img { padding:10px 12px; }
+  .mx-cap { bottom:10px; font-size:10.5px; max-width:calc(100% - 24px); }
+  .mx-groups { padding:14px; gap:14px; }
+  .mx-item { width:104px; }
+  .mx-item img { height:66px; }
+
+  .viewer-body { padding:18px 16px 30px; }
+  .viewer-body h3 { font-size:19px; margin-bottom:6px; }
+  .viewer-body .v-cat { font-size:10px; margin-bottom:10px; letter-spacing:1.6px; }
+  .viewer-body .v-desc { font-size:13.5px; line-height:1.75; margin-bottom:16px; }
+  .viewer-meta { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .vm-cell { padding:10px 12px; }
+  .vm-label { font-size:9px; }
+  .vm-value { font-size:12px; }
+
+  /* 详情折叠：先把屏幕让给媒体区 */
+  .v-detail-toggle {
+    display:inline-flex; align-items:center; gap:6px;
+    margin:2px 0 6px; padding:8px 15px; border-radius:100px;
+    border:1px solid var(--border); background:var(--bg-surface);
+    color:var(--t-secondary); font-family:inherit; font-size:12px; font-weight:600;
+    cursor:pointer; transition:color .25s, border-color .25s;
+  }
+  .v-detail-toggle.open { color:var(--c-primary); border-color:var(--border-glow); }
+  .v-detail { display:none; }
+  .v-detail.open { display:block; animation:viewerIn .22s var(--ease-out); }
+
+  /* 点击图片 → 全屏放大查看 */
+  .media-zoom .stack-stage,
+  .media-zoom .compare-wrap,
+  .media-zoom .mx-stage {
+    position:fixed; inset:0; z-index:40;
+    height:auto; max-height:none; border-radius:0; background:#000;
+  }
+  .media-zoom .stack-stage > img,
+  .media-zoom .mx-stage img { padding:0; width:100%; height:100%; object-fit:contain; }
+  .media-zoom .stack-tabs,
+  .media-zoom .stack-caption,
+  .media-zoom .stack-readout,
+  .media-zoom .cmp-modes,
+  .media-zoom .cmp-alt,
+  .media-zoom .cmp-label,
+  .media-zoom .mx-cap,
+  .media-zoom .viewer-body,
+  .media-zoom .thumb-strip,
+  .media-zoom .mx-groups { display:none !important; }
+  /* 放大层（z-index 40）之上仍要能点到关闭键 */
+  .media-zoom .viewer-close { z-index:50; }
+
+  /* 换图淡入，避免大图加载瞬间的白屏 */
+  .stack-stage > img, .cmp-layer img, .mx-stage img { transition:opacity .28s ease; }
+  .media-loading { opacity:.28; }
+
+  /* ─── ⑦ 特效降级：去糊玻璃 / 光球动画 / 噪声，只留必要动效 ─── */
+  .atmo-orb, .atmo-noise { display:none; }
+  .atmosphere {
+    background:
+      radial-gradient(60% 42% at 50% 0%, var(--glow-1), transparent 72%),
+      radial-gradient(52% 40% at 100% 26%, var(--glow-2), transparent 72%);
+  }
+  .atmo-grid { background-size:48px 48px; opacity:.7; }
+
+  .nav-shell, .bento-block, .tl-card, .profile-card, .viewer-shell, .hud-bar,
+  .board-arrow, .badge, .view-count, .stack-tabs, .stack-readout, .stack-caption,
+  .cmp-modes, .cmp-alt, .cmp-label, .mx-cap, .viewer-close, .peel-split span,
+  .btn-ghost-3d, .rail-dot::after {
+    backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+  }
+  .stack-tabs, .cmp-modes, .cmp-alt, .mx-cap, .stack-caption, .stack-readout {
+    background:color-mix(in srgb, var(--bg-void) 88%, transparent);
+  }
+
+  .hero-scene, .hero-title .line2, .bento-block, .tl-node, .profile-card::before,
+  .skill-fill::after, .scroll-track::after, .pulse, .hud-dot { animation:none !important; }
+
+  /* 入场动画：短、轻，且不再用 blur 滤镜（移动端合成代价高） */
+  .rv { filter:none; transform:translateY(16px); transition:opacity .5s var(--ease-out), transform .5s var(--ease-out); }
+  .rv.in { filter:none; }
+  .rv-d1, .rv-d2, .rv-d3, .rv-d4 { transition-delay:0s; }
+
+  /* 触屏无 hover：用按压反馈替代悬停位移 */
+  .bento-block:active, .tl-card:active { transform:scale(.995); }
+}
+
 </style>
 </head>
 <body>
@@ -1391,14 +1665,14 @@ section { position:relative; z-index:1; padding:140px 48px; max-width:1440px; ma
     <div class="sec-index">02</div>
     <div class="sec-label">Selected Works</div>
     <h2 class="sec-title">精选作品</h2>
-    <p class="sec-sub">按类别拆分为 5 行横向画廊，每行独立自动巡航、互不干扰 · 悬停暂停细览 · 支持拖拽 / 滚轮 / 箭头浏览。点击卡片进入对应的图像查看器：<b>多视图分栏</b>（同一产品的原图 / 白底 / 效果图 / 海报分别查看）、<b>前后对比</b>（拖动分割线，可切单看原图与成片）、<b>输入输出矩阵</b>（多图输入 → 多方案输出）。</p>
+    <p class="sec-sub" id="worksSub">按类别拆分为 5 行横向画廊，每行独立自动巡航、互不干扰 · 悬停暂停细览 · 支持拖拽 / 滚轮 / 箭头浏览。点击卡片进入对应的图像查看器：<b>多视图分栏</b>（同一产品的原图 / 白底 / 效果图 / 海报分别查看）、<b>前后对比</b>（拖动分割线，可切单看原图与成片）、<b>输入输出矩阵</b>（多图输入 → 多方案输出）。</p>
   </div>
   <div class="board-summary rv">
     <span><span id="boardCount">0</span> 件作品 · <span id="boardCatCount">0</span> 个类别</span>
     <span class="sep">·</span>
     <span class="board-state" id="boardState">各行独立巡航中</span>
     <span class="sep">·</span>
-    <span>悬停暂停 · 拖拽 · 滚轮横滑</span>
+    <span id="boardHint">悬停暂停 · 拖拽 · 滚轮横滑</span>
   </div>
   <div class="board-stack" id="boardStack"><!-- JS 渲染：每个类别一个滚动板块 --></div>
 </section>
@@ -1550,10 +1824,10 @@ section { position:relative; z-index:1; padding:140px 48px; max-width:1440px; ma
 
 <!-- A · 多视图分栏：同一产品的 原图 / 白底 / 效果图 / 海报 分别查看 -->
 <div class="viewer-shell" id="viewerStack" onclick="closeShell(event,'viewerStack')">
+  <button class="viewer-close" onclick="closeViewer('viewerStack')">✕</button>
   <div class="viewer-box">
-    <button class="viewer-close" onclick="closeViewer('viewerStack')">✕</button>
     <div class="stack-stage">
-      <img id="stackMain" alt="作品图">
+      <img id="stackMain" alt="作品图" decoding="async">
       <div class="stack-tabs" id="stackTabs"></div>
       <div class="stack-caption" id="stackCaption"></div>
       <div class="stack-readout" id="stackReadout">1 / 1</div>
@@ -1565,11 +1839,11 @@ section { position:relative; z-index:1; padding:140px 48px; max-width:1440px; ma
 
 <!-- B · 前后对比：拖动分割线 / 单看前 / 单看后 -->
 <div class="viewer-shell" id="viewerCompare" onclick="closeShell(event,'viewerCompare')">
+  <button class="viewer-close" onclick="closeViewer('viewerCompare')">✕</button>
   <div class="viewer-box">
-    <button class="viewer-close" onclick="closeViewer('viewerCompare')">✕</button>
     <div class="compare-wrap" id="compareWrap">
-      <div class="cmp-layer cmp-before" id="cmpBefore"><img id="cmpBeforeImg" alt="处理前"></div>
-      <div class="cmp-layer cmp-after" id="cmpAfter"><img id="cmpAfterImg" alt="处理后"></div>
+      <div class="cmp-layer cmp-before" id="cmpBefore"><img id="cmpBeforeImg" alt="处理前" decoding="async"></div>
+      <div class="cmp-layer cmp-after" id="cmpAfter"><img id="cmpAfterImg" alt="处理后" decoding="async"></div>
       <div class="cmp-modes">
         <button class="cmp-mode on" data-mode="split" onclick="setCmpMode('split')">分割对比</button>
         <button class="cmp-mode" data-mode="before" onclick="setCmpMode('before')">仅看原图</button>
@@ -1586,10 +1860,10 @@ section { position:relative; z-index:1; padding:140px 48px; max-width:1440px; ma
 
 <!-- C · 多图输入 → 多图输出矩阵 -->
 <div class="viewer-shell" id="viewerMatrix" onclick="closeShell(event,'viewerMatrix')">
+  <button class="viewer-close" onclick="closeViewer('viewerMatrix')">✕</button>
   <div class="viewer-box">
-    <button class="viewer-close" onclick="closeViewer('viewerMatrix')">✕</button>
-    <div class="mx-stage">
-      <img id="mxMain" alt="作品图">
+    <div class="mx-stage" id="mxStage">
+      <img id="mxMain" alt="作品图" decoding="async">
       <div class="mx-cap" id="mxCap"></div>
     </div>
     <div class="mx-groups" id="mxGroups"></div>
@@ -1606,6 +1880,14 @@ section { position:relative; z-index:1; padding:140px 48px; max-width:1440px; ma
 </div>
 
 <script>
+/* ═══════════ DEVICE PROFILE（移动端 / 触屏环境的降级开关） ═══════════ */
+/* 触屏或窄屏 = 移动端形态：取消自动巡航与镜像复制、关闭光标/粒子重绘、
+   查看器改为沉浸式全屏。桌面端行为完全不变。 */
+const FINE_POINTER = matchMedia('(hover:hover) and (pointer:fine)').matches;
+function isLiteEnv(){ return innerWidth <= 820 || !FINE_POINTER; }
+let LITE = isLiteEnv();
+if (LITE) document.documentElement.classList.add('lite');
+
 /* ═══════════ THEME ENGINE ═══════════ */
 const THEMES = {
   dark: {  /* 黑灰底 + 金 / 赤陶 / 橄榄点缀 */
@@ -1668,7 +1950,8 @@ class Field {
     });
   }
   spawn() {
-    const n = Math.min(60, Math.floor(innerWidth / 25));
+    /* 移动端只留少量光点，不做粒子互联（省 GPU 与电量） */
+    const n = LITE ? 16 : Math.min(60, Math.floor(innerWidth / 25));
     this.p = [];
     for (let i = 0; i < n; i++) {
       this.p.push({
@@ -1709,6 +1992,14 @@ class Field {
     this.x.stroke();
   }
   loop() {
+    const next = () => requestAnimationFrame(() => this.loop());
+    /* 标签页不可见时完全停手 */
+    if (document.hidden) return next();
+    /* 触屏：隔帧绘制（约 30fps），并且不画粒子连线（原先每帧 O(n²)） */
+    if (LITE) {
+      this.frame = (this.frame || 0) + 1;
+      if (this.frame % 2) return next();
+    }
     this.x.clearRect(0,0,this.c.width,this.c.height);
     const link = THEMES[currentTheme].linkRGB;
     const isLight = currentTheme === 'light';
@@ -1725,6 +2016,7 @@ class Field {
       this.x.arc(p.x,p.y,p.r,0,Math.PI*2);
       this.x.fillStyle = `rgba(${p.rgb},${p.o*(isLight?.65:.5)})`;
       this.x.fill();
+      if (LITE) return;
       for (let j=i+1;j<this.p.length;j++) {
         const q=this.p[j], dx=p.x-q.x, dy=p.y-q.y, d=Math.hypot(dx,dy);
         if (d<110) {
@@ -1735,7 +2027,7 @@ class Field {
         }
       }
     });
-    requestAnimationFrame(()=>this.loop());
+    next();
   }
 }
 const fieldInstance = new Field(document.getElementById('particleField'));
@@ -1751,64 +2043,72 @@ const ambientSpot=document.getElementById('ambientSpot'),
       hudFps=document.getElementById('hudFps'),
       hudSection=document.getElementById('hudSection');
 let mx=0,my=0,hx=0,hy=0;
-document.addEventListener('mousemove',e=>{
-  mx=e.clientX; my=e.clientY;
-  fieldInstance.m.x=mx; fieldInstance.m.y=my;
-  cCore.style.left=mx+'px'; cCore.style.top=my+'px';
-  /* 环境光斑跟随（柔光曲面） */
-  ambientSpot.classList.add('on');
-  ambientSpot.style.background =
-    `radial-gradient(720px circle at ${mx}px ${my}px,` +
-    `color-mix(in srgb, var(--c-primary) 12%, transparent),` +
-    `color-mix(in srgb, var(--c-secondary) 8%, transparent) 36%, transparent 70%)`;
-  /* 遥测坐标 */
-  hudCoord.textContent = `X: ${String(mx | 0).padStart(4,'0')}  Y: ${String(my | 0).padStart(4,'0')}`;
-});
+/* 自定义光标 / 环境光斑 / 帧率遥测只在「有精确指针」的桌面环境运行：
+   触屏上这些元素本身已隐藏，再跑循环纯属空烧 CPU */
+if (FINE_POINTER) {
+  document.addEventListener('mousemove',e=>{
+    mx=e.clientX; my=e.clientY;
+    fieldInstance.m.x=mx; fieldInstance.m.y=my;
+    cCore.style.left=mx+'px'; cCore.style.top=my+'px';
+    /* 环境光斑跟随（柔光曲面） */
+    ambientSpot.classList.add('on');
+    ambientSpot.style.background =
+      `radial-gradient(720px circle at ${mx}px ${my}px,` +
+      `color-mix(in srgb, var(--c-primary) 12%, transparent),` +
+      `color-mix(in srgb, var(--c-secondary) 8%, transparent) 36%, transparent 70%)`;
+    /* 遥测坐标 */
+    hudCoord.textContent = `X: ${String(mx | 0).padStart(4,'0')}  Y: ${String(my | 0).padStart(4,'0')}`;
+  });
 
-/* 实时帧率计数 */
-let fpsFrames=0, fpsLast=performance.now();
-(function fpsLoop(){
-  fpsFrames++;
-  const now=performance.now();
-  if(now-fpsLast>=500){
-    hudFps.textContent = Math.round(fpsFrames*1000/(now-fpsLast)) + ' FPS';
-    fpsFrames=0; fpsLast=now;
-  }
-  requestAnimationFrame(fpsLoop);
-})();
-(function haloLoop(){
-  hx+=(mx-hx)*.12; hy+=(my-hy)*.12;
-  cHalo.style.left=hx+'px'; cHalo.style.top=hy+'px';
-  requestAnimationFrame(haloLoop);
-})();
-document.addEventListener('mousedown',()=>cHalo.classList.add('pressing'));
-document.addEventListener('mouseup',()=>cHalo.classList.remove('pressing'));
+  /* 实时帧率计数 */
+  let fpsFrames=0, fpsLast=performance.now();
+  (function fpsLoop(){
+    if (document.hidden) { requestAnimationFrame(fpsLoop); return; }
+    fpsFrames++;
+    const now=performance.now();
+    if(now-fpsLast>=500){
+      hudFps.textContent = Math.round(fpsFrames*1000/(now-fpsLast)) + ' FPS';
+      fpsFrames=0; fpsLast=now;
+    }
+    requestAnimationFrame(fpsLoop);
+  })();
+  (function haloLoop(){
+    if (document.hidden) { requestAnimationFrame(haloLoop); return; }
+    hx+=(mx-hx)*.12; hy+=(my-hy)*.12;
+    cHalo.style.left=hx+'px'; cHalo.style.top=hy+'px';
+    requestAnimationFrame(haloLoop);
+  })();
+  document.addEventListener('mousedown',()=>cHalo.classList.add('pressing'));
+  document.addEventListener('mouseup',()=>cHalo.classList.remove('pressing'));
+}
 
 const HOVER_SEL = 'a,button,.work-3d,.bento-block,.thumb,.rail-dot,.cmp-divider,.cmp-mode,.stack-tab,.mx-item';
-document.addEventListener('mouseover', e => {
-  const el = e.target.closest && e.target.closest(HOVER_SEL);
-  if (el) {
-    cHalo.classList.add('hovering');
-    const hint = el.closest('.work-3d') && el.closest('.work-3d').querySelector('.view-hint');
-    if (hint && hint.textContent) { cLabel.textContent = hint.textContent; cLabel.classList.add('show'); }
-  }
-});
-document.addEventListener('mouseout', e => {
-  const el = e.target.closest && e.target.closest(HOVER_SEL);
-  if (el && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest(HOVER_SEL))) {
-    cHalo.classList.remove('hovering'); cLabel.classList.remove('show');
-  }
-});
-
-/* Magnetic buttons */
-document.querySelectorAll('[data-magnetic]').forEach(b=>{
-  b.addEventListener('mousemove',e=>{
-    const r=b.getBoundingClientRect(),
-    x=e.clientX-r.left-r.width/2, y=e.clientY-r.top-r.height/2;
-    b.style.transform=`translateZ(20px) translate(${x*.2}px,${y*.2-4}px)`;
+if (FINE_POINTER) {
+  document.addEventListener('mouseover', e => {
+    const el = e.target.closest && e.target.closest(HOVER_SEL);
+    if (el) {
+      cHalo.classList.add('hovering');
+      const hint = el.closest('.work-3d') && el.closest('.work-3d').querySelector('.view-hint');
+      if (hint && hint.textContent) { cLabel.textContent = hint.textContent; cLabel.classList.add('show'); }
+    }
   });
-  b.addEventListener('mouseleave',()=>b.style.transform='');
-});
+  document.addEventListener('mouseout', e => {
+    const el = e.target.closest && e.target.closest(HOVER_SEL);
+    if (el && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest(HOVER_SEL))) {
+      cHalo.classList.remove('hovering'); cLabel.classList.remove('show');
+    }
+  });
+
+  /* Magnetic buttons */
+  document.querySelectorAll('[data-magnetic]').forEach(b=>{
+    b.addEventListener('mousemove',e=>{
+      const r=b.getBoundingClientRect(),
+      x=e.clientX-r.left-r.width/2, y=e.clientY-r.top-r.height/2;
+      b.style.transform=`translateZ(20px) translate(${x*.2}px,${y*.2-4}px)`;
+    });
+    b.addEventListener('mouseleave',()=>b.style.transform='');
+  });
+}
 
 /* ═══════════ 作品数据（全部为真实图像资产） ═══════════ */
 const F = s => 'assets/full/' + s + '.webp';
@@ -2418,13 +2718,16 @@ const CATEGORIES = [
 
 /* 卡片渲染：封面叠层体现「一卡多图 / 前后对比 / 输入输出」 */
 function coverHTML(p){
-  let h = '<img class="cover" src="' + T(p.cover) + '" alt="' + p.name + '" loading="lazy">';
+  let h = '<img class="cover" src="' + T(p.cover) + '" alt="' + p.name + '" loading="lazy" decoding="async">';
+  /* 触屏：每张卡片只保留一张封面图（去掉叠放缩略图与前后对比叠层）。
+     卡片被镜像复制后总量过百，一张卡 4 张图 = 数百次解码，是低端机的卡顿主因 */
+  if (LITE) return h;
   if (p.peek) {
-    h += '<div class="peek-before"><img src="' + T(p.peek) + '" alt="处理前" loading="lazy"></div>'
+    h += '<div class="peek-before"><img src="' + T(p.peek) + '" alt="处理前" loading="lazy" decoding="async"></div>'
        + '<div class="peel-split"><span>⇄</span></div>';
   }
   if (p.mini && p.mini.length) {
-    h += '<div class="cover-stack">' + p.mini.map(s => '<img src="' + T(s) + '" alt="" loading="lazy">').join('') + '</div>';
+    h += '<div class="cover-stack">' + p.mini.map(s => '<img src="' + T(s) + '" alt="" loading="lazy" decoding="async">').join('') + '</div>';
   }
   return h;
 }
@@ -2443,7 +2746,7 @@ function cardHTML(p){
     + '</div>'
     + '</div>';
 }
-const WORKS = PROJECTS.map(p => ({ cat: p.cat, html: cardHTML(p) }));
+let WORKS = PROJECTS.map(p => ({ cat: p.cat, html: cardHTML(p) }));
 
 const CAR_SPEED = 0.6;               // px / frame
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2457,6 +2760,7 @@ function boardShouldPause(st) {
 function updateCarState() {
   const el = document.getElementById('boardState');
   if (!el) return;
+  if (LITE) { el.textContent = '手势浏览'; return; }
   el.textContent = boards.some(boardShouldPause) ? '已暂停 · 悬停浏览中' : '各行独立巡航中';
 }
 
@@ -2464,6 +2768,9 @@ function updateCarState() {
 function renderBoards() {
   const stack = document.getElementById('boardStack');
   if (!stack) return;
+
+  /* 卡片 HTML 依赖当前环境（触屏只留一张封面图），重建时按 LITE 重新生成 */
+  WORKS = PROJECTS.map(p => ({ cat: p.cat, html: cardHTML(p) }));
 
   stack.innerHTML = CATEGORIES.map(cat => {
     const list = WORKS.filter(w => w.cat === cat.key);
@@ -2494,31 +2801,36 @@ function renderBoards() {
     const track = row.querySelector('.board-track');
     const list = WORKS.filter(w => w.cat === key);
 
-    /* 先渲染一份并测量真实宽度，再决定复制份数：
+    /* 桌面：先渲染一份并测量真实宽度，再决定复制份数：
        保证「一份」宽度 ≥ 视口宽度，双份镜像才能无缝回绕。
        否则 scrollWidth < 2×clientWidth 时回绕条件永远无法成立，
-       该行会卡死在滚动末端而看起来"不滚动"。 */
+       该行会卡死在滚动末端而看起来"不滚动"。
+       触屏：不复制、不镜像 —— 靠原生滑动 + 卡片吸附对齐，
+       DOM 节点与图片解码量直接减半以上 */
     const setHtml = list.map(w => w.html).join('');
     track.innerHTML = setHtml;
-    const vw = vp.clientWidth || innerWidth;
-    const setW = Math.max(track.scrollWidth, 1);
-    const repeat = Math.max(1, Math.ceil((vw + 120) / setW));
-    const unitHtml = setHtml.repeat(repeat);
-    track.innerHTML = unitHtml + unitHtml;   /* 双份镜像 = 无限循环 */
-
-    /* 精确测量「一份」的滚动步长 = 第 0 张到第 unitCount 张卡片的距离
-       （含跨份间隔）；直接用 scrollWidth/2 会差半个 gap 导致回绕跳变 */
-    const unitCount = list.length * repeat;
-    const unitCards = track.querySelectorAll('.work-3d');
     let unitW = 0;
-    if (unitCards.length > unitCount) unitW = unitCards[unitCount].offsetLeft - unitCards[0].offsetLeft;
-    if (!unitW || unitW < 1) unitW = Math.round(track.scrollWidth / 2);
+    if (!LITE) {
+      const vw = vp.clientWidth || innerWidth;
+      const setW = Math.max(track.scrollWidth, 1);
+      const repeat = Math.max(1, Math.ceil((vw + 120) / setW));
+      const unitHtml = setHtml.repeat(repeat);
+      track.innerHTML = unitHtml + unitHtml;   /* 双份镜像 = 无限循环 */
+
+      /* 精确测量「一份」的滚动步长 = 第 0 张到第 unitCount 张卡片的距离
+         （含跨份间隔）；直接用 scrollWidth/2 会差半个 gap 导致回绕跳变 */
+      const unitCount = list.length * repeat;
+      const unitCards = track.querySelectorAll('.work-3d');
+      if (unitCards.length > unitCount) unitW = unitCards[unitCount].offsetLeft - unitCards[0].offsetLeft;
+      if (!unitW || unitW < 1) unitW = Math.round(track.scrollWidth / 2);
+    }
     vp.scrollLeft = 0;
 
-    /* 卡片入场 + 3D 倾斜 + 多层视差分离 */
+    /* 卡片入场 + 3D 倾斜 + 多层视差分离（倾斜与视差只在桌面绑定） */
     track.querySelectorAll('.work-3d').forEach((card, i) => {
       card.classList.add('pop-in');
-      card.style.animationDelay = (i % 12) * 0.05 + 's';
+      card.style.animationDelay = LITE ? '0s' : (i % 12) * 0.05 + 's';
+      if (LITE) return;
       card.addEventListener('mousemove', e => {
         const r = card.getBoundingClientRect(),
         x = (e.clientX - r.left) / r.width - .5,
@@ -2560,8 +2872,11 @@ function renderBoards() {
 function bindBoard(st) {
   const vp = st.viewport;
 
-  vp.addEventListener('mouseenter', () => { st.hovering = true; updateCarState(); });
-  vp.addEventListener('mouseleave', () => { st.hovering = false; updateCarState(); });
+  /* 触屏：悬停暂停没有意义（手指抬起后 hover 状态会残留），不再绑定 */
+  if (!LITE) {
+    vp.addEventListener('mouseenter', () => { st.hovering = true; updateCarState(); });
+    vp.addEventListener('mouseleave', () => { st.hovering = false; updateCarState(); });
+  }
 
   vp.addEventListener('pointerdown', e => {
     if (e.pointerType !== 'mouse') return;
@@ -2640,21 +2955,32 @@ function boardLoop() {
   requestAnimationFrame(boardLoop);
 }
 
-/* 视口显著变宽、导致「一份」已不足以填满时重建板块 */
+/* 视口显著变宽、导致「一份」已不足以填满时重建板块；
+   宽窄跨越移动端阈值时也要切换渲染策略（镜像巡航 ↔ 单份吸附） */
 let boardResizeTimer = null;
 window.addEventListener('resize', () => {
   clearTimeout(boardResizeTimer);
   boardResizeTimer = setTimeout(() => {
-    if (boards.some(st => st.unit && st.unit < st.viewport.clientWidth + 40)) {
+    const nowLite = isLiteEnv();
+    if (nowLite !== LITE) {
+      LITE = nowLite;
+      document.documentElement.classList.toggle('lite', LITE);
+      boards.length = 0;
+      renderBoards();
+      updateCarState();
+      if (!LITE) boardLoop();
+      return;
+    }
+    if (!LITE && boards.some(st => st.unit && st.unit < st.viewport.clientWidth + 40)) {
       boards.length = 0;
       renderBoards();
     }
   }, 300);
 });
 
-/* 初始化 */
+/* 初始化：自动巡航只在桌面启动，触屏完全靠手势 */
 renderBoards();
-boardLoop();
+if (!LITE) boardLoop();
 updateCarState();
 
 /* ═══════════ TYPEWRITER ═══════════ */
@@ -2662,6 +2988,8 @@ const phrases=['五年 AIGC · 图像生成与工作流架构','ComfyUI 节点�
 let pi=0,ci=0,del=false;
 const tt=document.getElementById('typeText');
 function type(){
+  /* 后台标签页里不必继续跑打字机（每次都触发一次布局） */
+  if (document.hidden) { setTimeout(type, 1200); return; }
   const cur=phrases[pi];
   tt.textContent = del ? cur.substring(0,ci-1) : cur.substring(0,ci+1);
   ci += del ? -1 : 1;
@@ -2699,31 +3027,150 @@ document.querySelectorAll('.bento-block').forEach(el=>skObs.observe(el));
 /* ═══════════ 图像查看器引擎（三种查看类型 · 全部围绕多图） ═══════════ */
 let curWork = null;
 
+/* 打开查看器时锁住页面滚动：iOS 对 body{overflow:hidden} 支持不稳定，
+   触屏改用 position:fixed + 记录偏移，关闭时精确回位到原位置 */
+let lockY = 0, bodyLocked = false;
+function lockBody(){
+  if (bodyLocked) return;
+  bodyLocked = true;
+  lockY = window.scrollY || window.pageYOffset || 0;
+  if (LITE) {
+    document.body.style.position = 'fixed';
+    document.body.style.top = (-lockY) + 'px';
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+  } else {
+    document.body.style.overflow = 'hidden';
+  }
+}
+function unlockBody(){
+  if (!bodyLocked) return;
+  bodyLocked = false;
+  if (LITE) {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    window.scrollTo(0, lockY);
+  } else {
+    document.body.style.overflow = '';
+  }
+}
+
 function openShell(id){
-  document.getElementById(id).classList.add('open');
-  document.body.style.overflow = 'hidden';
+  const el = document.getElementById(id);
+  el.classList.remove('media-zoom');
+  el.classList.add('open');
+  lockBody();
   viewerOpen = true;
   updateCarState();
 }
 function closeViewer(id){
-  document.getElementById(id).classList.remove('open');
-  document.body.style.overflow = '';
+  const el = document.getElementById(id);
+  el.classList.remove('open', 'media-zoom');
+  unlockBody();
   viewerOpen = false;
   updateCarState();
 }
 function closeShell(e, id){ if (e.target.id === id) closeViewer(id); }
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') document.querySelectorAll('.viewer-shell.open').forEach(v => closeViewer(v.id));
+  if (e.key !== 'Escape') return;
+  /* 放大态先退回查看器，再按一次才关闭 */
+  const zoomed = document.querySelector('.viewer-shell.open.media-zoom');
+  if (zoomed) { zoomed.classList.remove('media-zoom'); return; }
+  document.querySelectorAll('.viewer-shell.open').forEach(v => closeViewer(v.id));
 });
+
+/* ── 图片切换：先用缩略图顶上，再解码大图淡入，避免整屏空白等待 ── */
+function setMainImg(img, src, alt, thumb){
+  if (!img) return;
+  if (alt != null) img.alt = alt;
+  if (img.dataset.src === src) return;
+  img.dataset.src = src;
+  if (!img.getAttribute('src') && thumb) {
+    /* 首次打开：缩略图立刻可见（同一张图的小尺寸版本） */
+    img.src = thumb;
+    img.classList.remove('media-loading');
+  } else {
+    img.classList.add('media-loading');
+  }
+  const done = () => { img.src = src; img.classList.remove('media-loading'); };
+  const pre = new Image();
+  pre.decoding = 'async';
+  pre.onload = done;
+  pre.onerror = done;
+  pre.src = src;
+  if (pre.complete && pre.naturalWidth) done();
+}
+function preloadImg(slug){
+  if (!slug) return;
+  const im = new Image();
+  im.decoding = 'async';
+  im.src = F(slug);
+}
+
+/* ── 触屏手势：左右滑动切图 / 点按放大 ── */
+function bindSwipe(el, onLeft, onRight, ignoreSel){
+  if (!el || el.dataset.swipe) return;
+  el.dataset.swipe = '1';
+  let sx = 0, sy = 0, active = false, moved = false;
+  el.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse') return;          /* 桌面留给按钮/箭头，不抢鼠标 */
+    if (ignoreSel && e.target.closest && e.target.closest(ignoreSel)) return;
+    active = true; moved = false; sx = e.clientX; sy = e.clientY;
+  }, { passive:true });
+  el.addEventListener('pointermove', e => {
+    if (!active) return;
+    if (Math.abs(e.clientX - sx) > 12 || Math.abs(e.clientY - sy) > 12) moved = true;
+  }, { passive:true });
+  const end = e => {
+    if (!active) return;
+    active = false;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.abs(dx) < 44 || Math.abs(dx) < Math.abs(dy) * 1.4) { moved = false; return; }
+    dx < 0 ? onLeft() : onRight();
+    /* 滑动后浏览器可能仍派发一次 click：短暂锁住，避免这次点击顺带触发放大 */
+    setTimeout(() => { moved = false; }, 350);
+  };
+  el.addEventListener('pointerup', end, { passive:true });
+  el.addEventListener('pointercancel', () => { active = false; moved = false; }, { passive:true });
+  el.addEventListener('click', e => {
+    if (moved) { e.stopPropagation(); e.preventDefault(); }
+  }, true);
+}
+function bindZoom(el, shellId){
+  if (!el || el.dataset.zoom) return;
+  el.dataset.zoom = '1';
+  el.addEventListener('click', e => {
+    if (!LITE) return;
+    if (e.target.closest('button, .stack-tabs, .cmp-modes, .cmp-alt, .cmp-divider')) return;
+    /* 刚拖动过对比分割线时不当作点击 */
+    if (performance.now() - lastCmpDragAt < 320) return;
+    document.getElementById(shellId).classList.toggle('media-zoom');
+  });
+}
 
 function fillBody(elId, p){
   document.getElementById(elId).innerHTML =
     '<h3>' + p.name + '</h3>'
     + '<div class="v-cat">' + p.kicker + '</div>'
-    + '<p class="v-desc">' + p.desc + '</p>'
-    + '<div class="viewer-meta">'
-    + p.meta.map(m => '<div class="vm-cell"><div class="vm-label">' + m[0] + '</div><div class="vm-value">' + m[1] + '</div></div>').join('')
+    + '<button class="v-detail-toggle" type="button" onclick="toggleVDetail(this)">作品详情 ▾</button>'
+    + '<div class="v-detail">'
+    +   '<p class="v-desc">' + p.desc + '</p>'
+    +   '<div class="viewer-meta">'
+    +     p.meta.map(m => '<div class="vm-cell"><div class="vm-label">' + m[0] + '</div><div class="vm-value">' + m[1] + '</div></div>').join('')
+    +   '</div>'
     + '</div>';
+}
+/* 移动端：描述与参数默认收起，媒体区先占满屏幕 */
+function toggleVDetail(btn){
+  const detail = btn.parentElement.querySelector('.v-detail');
+  if (!detail) return;
+  const open = detail.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  btn.textContent = open ? '收起详情 ▴' : '作品详情 ▾';
 }
 
 function openWork(id){
@@ -2746,6 +3193,7 @@ function openStack(p){
   paintStack();
   fillBody('stackBody', p);
   openShell('viewerStack');
+  bindStackGestures();
 }
 function pickGroup(gi){
   stk.g = gi; stk.i = 0;
@@ -2758,16 +3206,46 @@ function stackStep(d){
   stk.i = (stk.i + d + imgs.length) % imgs.length;
   paintStack();
 }
+/* 左右滑动：先在本组内换图，到头后自动跳到相邻组 */
+function stackSwipe(d){
+  const p = stk.p;
+  if (!p) return;
+  const groups = p.groups;
+  let gi = stk.g, ii = stk.i + d;
+  const cur = groups[gi].imgs;
+  if (ii >= cur.length) { gi = (gi + 1) % groups.length; ii = 0; }
+  else if (ii < 0) { gi = (gi - 1 + groups.length) % groups.length; ii = groups[gi].imgs.length - 1; }
+  stk.g = gi; stk.i = ii;
+  const tabs = document.querySelectorAll('#stackTabs .stack-tab');
+  tabs.forEach((b, i) => b.classList.toggle('on', i === gi));
+  if (tabs[gi] && tabs[gi].scrollIntoView) {
+    tabs[gi].scrollIntoView({ block:'nearest', inline:'center', behavior:'smooth' });
+  }
+  paintStack();
+}
 function paintStack(){
   const p = stk.p, g = p.groups[stk.g], im = g.imgs[stk.i];
-  const main = document.getElementById('stackMain');
-  main.src = F(im.s);
-  main.alt = (im.cap || p.name) + ' · ' + g.label;
+  setMainImg(document.getElementById('stackMain'), F(im.s), (im.cap || p.name) + ' · ' + g.label, T(im.s));
   document.getElementById('stackCaption').textContent = g.label + (g.note ? ' · ' + g.note : '');
-  document.getElementById('stackReadout').textContent = (stk.i + 1) + ' / ' + g.imgs.length;
-  document.getElementById('stackThumbs').innerHTML = g.imgs.map((x, i) =>
+  /* 单张视图时不必显示「1 / 1」和缩略条，把纵向空间让给图片 */
+  const multi = g.imgs.length > 1;
+  const readout = document.getElementById('stackReadout');
+  readout.textContent = (stk.i + 1) + ' / ' + g.imgs.length;
+  readout.style.display = multi ? '' : 'none';
+  const thumbs = document.getElementById('stackThumbs');
+  thumbs.style.display = multi ? '' : 'none';
+  thumbs.innerHTML = g.imgs.map((x, i) =>
     '<div class="thumb' + (i === stk.i ? ' active' : '') + '" onclick="pickImg(' + i + ')" title="' + (x.cap || '') + '">'
-    + '<img src="' + T(x.s) + '" alt="' + (x.cap || '') + '"></div>').join('');
+    + '<img src="' + T(x.s) + '" alt="' + (x.cap || '') + '" loading="lazy" decoding="async"></div>').join('');
+  /* 预取同组下一张：滑动/点击切换时不再空白等待 */
+  const next = g.imgs[(stk.i + 1) % g.imgs.length];
+  if (next && next.s !== im.s) preloadImg(next.s);
+}
+function bindStackGestures(){
+  const stage = document.querySelector('#viewerStack .stack-stage');
+  /* 分组标签条自身也要横滑，不能算作切换手势 */
+  bindSwipe(stage, () => stackSwipe(1), () => stackSwipe(-1), '.stack-tabs');
+  bindZoom(stage, 'viewerStack');
 }
 
 /* ── B｜前后对比：拖动分割线 / 单看前 / 单看后 ── */
@@ -2777,8 +3255,8 @@ function openCompare(p){
   const before = p.groups[0].imgs[0];
   const afters = p.groups[1].imgs;
   cmp = { p, alt:0 };
-  document.getElementById('cmpBeforeImg').src = F(before.s);
-  document.getElementById('cmpAfterImg').src = F(afters[0].s);
+  setMainImg(document.getElementById('cmpBeforeImg'), F(before.s), '处理前', T(before.s));
+  setMainImg(document.getElementById('cmpAfterImg'), F(afters[0].s), afters[0].cap || '处理后', T(afters[0].s));
   const altWrap = document.getElementById('cmpAlt');
   if (afters.length > 1) {
     altWrap.style.display = 'flex';
@@ -2790,12 +3268,19 @@ function openCompare(p){
   setCmpMode('split');
   fillBody('cmpBody', p);
   openShell('viewerCompare');
+  bindCompareGestures();
 }
 function pickAlt(i){
   cmp.alt = i;
   const afters = cmp.p.groups[1].imgs;
-  document.getElementById('cmpAfterImg').src = F(afters[i].s);
+  setMainImg(document.getElementById('cmpAfterImg'), F(afters[i].s), afters[i].cap || '处理后', T(afters[i].s));
   document.querySelectorAll('#cmpAlt button').forEach((b, k) => b.classList.toggle('on', k === i));
+}
+function bindCompareGestures(){
+  const wrap = document.getElementById('compareWrap');
+  /* 对比图的主交互是拖分割线，不绑左右滑动（否则一次拖动会同时切图+切分割线）；
+     方案切换用 cmpAlt 按钮，放大用点按 */
+  bindZoom(wrap, 'viewerCompare');
 }
 function setCmpMode(mode){
   document.querySelectorAll('.cmp-mode').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
@@ -2817,50 +3302,82 @@ function setCmpSplit(pct){
   document.getElementById('cmpBefore').style.clipPath = 'inset(0 ' + (100 - pct) + '% 0 0)';
   document.getElementById('cmpAfter').style.clipPath = 'inset(0 0 0 ' + pct + '%)';
 }
+/* 对比拖拽：按下位置不再限于 3px 的分割线——在整张图上按下即可拖动，
+   手指直接点到想比较的位置，这是移动端最重要的可用性修复 */
+let lastCmpDragAt = 0;
 (function cmpDrag(){
   const wrap = document.getElementById('compareWrap');
   const div = document.getElementById('cmpDivider');
   let drag = false;
-  div.addEventListener('pointerdown', e => {
+
+  function applyAt(clientX){
+    if (!cmp.p) return;
+    const mode = document.querySelector('.cmp-mode.on');
+    if (mode && mode.dataset.mode && mode.dataset.mode !== 'split') return;
+    const r = wrap.getBoundingClientRect();
+    if (!r.width) return;
+    setCmpSplit(Math.min(Math.max((clientX - r.left) / r.width * 100, 0), 100));
+  }
+
+  wrap.addEventListener('pointerdown', e => {
+    if (e.target.closest && e.target.closest('button')) return;
     drag = true;
-    if (div.setPointerCapture) div.setPointerCapture(e.pointerId);
+    lastCmpDragAt = performance.now();
+    if (div.setPointerCapture) { try { div.setPointerCapture(e.pointerId); } catch(_){} }
     e.preventDefault();
+    applyAt(e.clientX);
   });
   window.addEventListener('pointerup', () => { drag = false; });
+  window.addEventListener('pointercancel', () => { drag = false; });
   window.addEventListener('pointermove', e => {
-    if (!drag || !cmp.p) return;
-    const mode = document.querySelector('.cmp-mode.on');
-    if (!mode || mode.dataset.mode !== 'split') return;
-    const r = wrap.getBoundingClientRect();
-    const pct = Math.min(Math.max((e.clientX - r.left) / r.width * 100, 0), 100);
-    setCmpSplit(pct);
+    if (!drag) return;
+    lastCmpDragAt = performance.now();
+    applyAt(e.clientX);
   });
 })();
 
 /* ── C｜多图输入 → 多图输出矩阵 ── */
-let mxState = { p:null, items:[] };
+let mxState = { p:null, items:[], cur:null };
 
 function openMatrix(p){
   const items = [];
   p.groups.forEach(g => g.imgs.forEach(im => items.push({ s:im.s, cap:im.cap, group:g.label, role:g.role })));
-  mxState = { p, items };
+  mxState = { p, items, cur:null };
   document.getElementById('mxGroups').innerHTML = p.groups.map(g =>
     '<div class="mx-group">'
     + '<div class="mx-head"><b>' + g.label + '</b><span>' + g.imgs.length + ' 张</span></div>'
     + '<div class="mx-row">'
     + g.imgs.map(im => '<button class="mx-item" data-s="' + im.s + '" onclick="pickMx(\'' + im.s + '\')">'
-        + '<img src="' + T(im.s) + '" alt=""><span>' + (im.cap || '') + '</span></button>').join('')
+        + '<img src="' + T(im.s) + '" alt="" loading="lazy" decoding="async"><span>' + (im.cap || '') + '</span></button>').join('')
     + '</div></div>').join('');
   const firstOut = items.find(x => x.role === 'out') || items[0];
   pickMx(firstOut.s);
   fillBody('mxBody', p);
   openShell('viewerMatrix');
+  bindMatrixGestures();
 }
 function pickMx(slug){
   const it = mxState.items.find(x => x.s === slug);
-  document.getElementById('mxMain').src = F(slug);
+  mxState.cur = slug;
+  setMainImg(document.getElementById('mxMain'), F(slug), it ? (it.role === 'out' ? '输出 · ' : '输入 · ') + it.cap : '', T(slug));
   document.getElementById('mxCap').textContent = it ? (it.role === 'out' ? '输出 · ' : '输入 · ') + it.cap : '';
-  document.querySelectorAll('.mx-item').forEach(b => b.classList.toggle('on', b.dataset.s === slug));
+  const btns = document.querySelectorAll('.mx-item');
+  btns.forEach(b => b.classList.toggle('on', b.dataset.s === slug));
+  /* 选中的缩略卡滚进视野（手机上矩阵行是横向滚动的） */
+  const active = [...btns].find(b => b.dataset.s === slug);
+  if (active && active.scrollIntoView) active.scrollIntoView({ block:'nearest', inline:'center', behavior:'smooth' });
+}
+function mxSwipe(d){
+  const items = mxState.items;
+  if (!items || items.length < 2) return;
+  const idx = items.findIndex(x => x.s === mxState.cur);
+  const next = items[(idx + d + items.length) % items.length];
+  if (next) pickMx(next.s);
+}
+function bindMatrixGestures(){
+  const stage = document.getElementById('mxStage');
+  bindSwipe(stage, () => mxSwipe(1), () => mxSwipe(-1));
+  bindZoom(stage, 'viewerMatrix');
 }
 
 /* ═══════════ TOAST & 剪贴板 ═══════════ */
@@ -2922,6 +3439,17 @@ const TOOLS = [
   }
 
   function build(){
+    /* 触屏：静态三列网格，8 个工具一次看全，也不再需要每帧重排 */
+    if (LITE) {
+      stage.classList.add('tools-static');
+      ring.classList.add('tools-grid');
+      ring.style.removeProperty('--tools-cw');
+      if (ring.children.length !== TOOLS.length) fill(TOOLS.length);
+      return;
+    }
+    stage.classList.remove('tools-static');
+    ring.classList.remove('tools-grid');
+
     const w = stage.clientWidth || innerWidth;
     if (!ring.children.length) fill(TOOLS.length);
 
@@ -2960,19 +3488,28 @@ const TOOLS = [
     }
   }
 
+  let toolsVisible = true;
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(es => { toolsVisible = es[0].isIntersecting; }, { threshold:0 }).observe(stage);
+  }
+
   function tick(now){
     requestAnimationFrame(tick);
+    if (LITE) return;                 /* 网格模式无需逐帧重排 */
     if (!lastT) { lastT = now; return; }
     const dt = Math.min(0.06, (now - lastT) / 1000);
     lastT = now;
-    if (paused || reduceMotion) return;
+    /* 不在视口内 / 页面隐藏就不重排卡片 */
+    if (paused || reduceMotion || !toolsVisible || document.hidden) return;
     shift = (shift + dt * (state.total / ROUND_SEC)) % state.total;
     paint();
   }
 
-  /* 鼠标进入暂停巡航，方便逐张看清 */
-  stage.addEventListener('mouseenter', () => { paused = true; });
-  stage.addEventListener('mouseleave', () => { paused = false; });
+  /* 鼠标进入暂停巡航，方便逐张看清（触屏无悬停，不绑） */
+  if (!LITE) {
+    stage.addEventListener('mouseenter', () => { paused = true; });
+    stage.addEventListener('mouseleave', () => { paused = false; });
+  }
 
   let rt = null;
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(build, 160); });
@@ -2986,26 +3523,71 @@ const sections=document.querySelectorAll('section[id]');
 const pills=document.querySelectorAll('.nav-pill');
 const railDots=document.querySelectorAll('.rail-dot');
 const sideRail=document.getElementById('sideRail');
-window.addEventListener('scroll',()=>{
-  const sc=scrollY/(document.documentElement.scrollHeight-innerHeight);
-  document.getElementById('scrollBeam').style.width=(sc*100)+'%';
-  document.getElementById('topOrb').classList.toggle('show',scrollY>500);
-  document.getElementById('navShell').classList.toggle('scrolled',scrollY>40);
-  sideRail.classList.toggle('visible',scrollY>200);
-  hudBar.classList.toggle('show',scrollY>200);
+const scrollBeamEl=document.getElementById('scrollBeam');
+const topOrbEl=document.getElementById('topOrb');
+const navShellEl=document.getElementById('navShell');
+
+/* 先把每屏的绝对位置量一次，滚动时只做比较——
+   原来每次 scroll 都读 offsetTop，会强制同步布局，移动端滚动明显掉帧 */
+let secTops=[];
+function measureSecTops(){
+  secTops=[...sections].map(s=>({ id:s.id, top:s.getBoundingClientRect().top + window.scrollY }));
+}
+measureSecTops();
+let secTopsTimer=null;
+window.addEventListener('resize',()=>{ clearTimeout(secTopsTimer); secTopsTimer=setTimeout(measureSecTops, 240); });
+window.addEventListener('load',()=>setTimeout(measureSecTops, 120));
+
+let scrollTicking=false;
+let lastScrollY=0;
+function onScroll(){
+  const max=document.documentElement.scrollHeight-innerHeight;
+  const sc=max>0?scrollY/max:0;
+  scrollBeamEl.style.width=(sc*100)+'%';
+  topOrbEl.classList.toggle('show',scrollY>500);
+  navShellEl.classList.toggle('scrolled',scrollY>40);
+  /* 触屏：向下滚动收起导航（固定导航会压住卡片），向上滚动立刻回来 */
+  if (LITE) {
+    if (scrollY > 260 && scrollY > lastScrollY + 4) navShellEl.classList.add('nav-hidden');
+    else if (scrollY < lastScrollY - 4 || scrollY < 120) navShellEl.classList.remove('nav-hidden');
+  } else if (navShellEl.classList.contains('nav-hidden')) {
+    navShellEl.classList.remove('nav-hidden');
+  }
+  lastScrollY = scrollY;
+  if (!LITE) {
+    sideRail.classList.toggle('visible',scrollY>200);
+    hudBar.classList.toggle('show',scrollY>200);
+  }
   let cur='hero';
-  sections.forEach(s=>{ if(scrollY>=s.offsetTop-120) cur=s.id; });
+  for (const s of secTops) if (scrollY >= s.top-120) cur=s.id;
+  if (cur===lastSection) return;
+  lastSection=cur;
   pills.forEach(p=>p.classList.toggle('active',p.dataset.sec===cur));
   railDots.forEach(d=>d.classList.toggle('active',d.dataset.sec===cur));
-  hudSection.textContent='SECTION: '+cur.toUpperCase();
+  if (hudSection) hudSection.textContent='SECTION: '+cur.toUpperCase();
+}
+let lastSection='';
+window.addEventListener('scroll',()=>{
+  if (scrollTicking) return;
+  scrollTicking=true;
+  requestAnimationFrame(()=>{ scrollTicking=false; onScroll(); });
 },{passive:true});
 /* 首帧同步滚动相关状态 */
-window.dispatchEvent(new Event('scroll'));
+onScroll();
+window.addEventListener('load',onScroll);
 
-/* Touch fallback */
-if('ontouchstart' in window){
+/* Touch fallback：触屏环境彻底收起自定义光标层（CSS 已隐藏，这里再兜一层） */
+if (!FINE_POINTER || LITE) {
   document.body.style.cursor='auto';
   cCore.style.display='none'; cHalo.style.display='none'; cLabel.style.display='none';
+}
+
+/* 移动端文案：自动巡航 / 悬停提示在触屏上并不存在，说明文字要对得上实际交互 */
+if (LITE) {
+  const worksSub = document.getElementById('worksSub');
+  if (worksSub) worksSub.innerHTML = '按类别拆分为 5 行横向画廊，<b>左右滑动</b>浏览，卡片自动对齐。点击卡片进入查看器：<b>多视图分栏</b>（原图 / 白底 / 效果图 / 海报分别查看）、<b>前后对比</b>（手指在图上拖动即可移动分割线）、<b>输入输出矩阵</b>（多图输入 → 多方案输出）。查看器内左右滑动切图、点图片全屏放大。';
+  const boardHint = document.getElementById('boardHint');
+  if (boardHint) boardHint.textContent = '左右滑动 · 点按查看';
 }
 </script>
 </body>
